@@ -1,0 +1,30 @@
+name: Universal GitOps LZ Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform Engine
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    - name: Terraform Initialize
+      run: terraform init
+
+    # This executes the cloud infrastructure generation securely
+    - name: Terraform Apply Baseline
+      run: terraform apply -auto-approve
+      env:
+        # Adopting users simply plug their specific cloud keys into GitHub Secrets
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
