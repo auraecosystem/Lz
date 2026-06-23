@@ -1,0 +1,52 @@
+name: Auto Compress Repository to Lzip
+
+# This triggers the script automatically on every code push to the main branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  compress-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Pull down the repository code into the runner machine
+    - name: Checkout Repository Code
+      uses: actions/checkout@v4
+
+    # 2. Install the lzip dependency tool onto the Linux machine
+    - name: Install Lzip Compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lzip
+
+    # 3. Create the script.lz file on the fly and execute its contents
+    - name: Generate and Run script.lz
+      run: |
+        # Write the logic into a temporary script
+        cat << 'EOF' > temp_script.sh
+        #!/bin/bash
+        echo "⚡ Starting repository compression..."
+        find . -type f ! -path '*/.*' ! -name 'script.lz' | while read -r file; do
+            echo "Compressing: $file"
+            lzip -9 -f -m "$file"
+        done
+        echo "🎉 All repository files processed into .lz!"
+        EOF
+        
+        # Compress it into the script.lz format
+        lzip -9 -c temp_script.sh > script.lz
+        rm temp_script.sh
+        
+        # Execute the script.lz file directly from memory
+        lzip -cd script.lz | bash
+
+    # 4. Save your compressed files so you can download them from GitHub
+    - name: Upload Compressed Files as Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: compressed-repository-files
+        path: |
+          ./**/*.lz
