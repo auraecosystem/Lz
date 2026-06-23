@@ -1,1 +1,0 @@
-tar --lzip -cf codes.lz --exclude='.git' --exclude='codes.lz' .
