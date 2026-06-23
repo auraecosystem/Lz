@@ -1,0 +1,20 @@
+    - name: Verify Active Subscription Payment
+      id: check_billing
+      run: |
+        echo "💳 Validating corporate billing account credentials..."
+        
+        # Query your Stripe microservice or billing middleware
+        # Passes the GitHub Repository Owner or Tenant ID to check payment health
+        HTTP_RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+          -H "Authorization: Bearer ${{ secrets.INTERNAL_BILLING_TOKEN }}" \
+          -X POST -d "tenant_id=${{ github.repository_owner }}" \
+          https://auraecosystem.org)
+          
+        # If the billing server does not respond with an HTTP 200 OK status, kill the pipeline
+        if [ "$HTTP_RESPONSE" != "200" ]; then
+          echo "🛑 DEPLOYMENT BLOCKED: No active payment plan or subscription found for this account."
+          echo "Please update your credit card details at billing.auraecosystem.org to unlock your landing zone."
+          exit 1
+        fi
+        
+        echo "✅ Payment Verified. Account is in good standing."
