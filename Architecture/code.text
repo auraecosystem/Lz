@@ -1,0 +1,16 @@
+universal-landing-zone/
+├── .github/workflows/          # Universal CI/CD Automation (GitHub Actions)
+│   ├── tf-validate.yml        # Tests code for syntax errors on PR
+│   └── tf-deploy.yml          # Deploys the infrastructure on Merge
+├── modules/                   # Reusable blueprint blocks
+│   ├── identity/              # Teams, SSO, and Permission sets
+│   ├── networking/            # VPCs, Firewalls, Hub-and-Spoke links
+│   └── security/              # Logging, KMS Encryption, Guardrails
+├── environments/              # Where teams customize their specific cloud
+│   ├── aws-production/        # Production LZ for AWS
+│   │   ├── main.tf            # Calls modules with AWS parameters
+│   │   └── variables.tf
+│   └── azure-production/      # Production LZ for Azure
+│       ├── main.tf            # Calls modules with Azure parameters
+│       └── variables.tf
+└── README.md                  # Adoption guide for developers
