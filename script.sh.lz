@@ -1,0 +1,19 @@
+# 1. Create a temporary text file with the compression instructions inside
+cat << 'EOF' > temp_script.sh
+#!/bin/bash
+# This code runs inside your repository to compress every file into .lz
+echo "⚡ Starting repository compression..."
+find . -type f ! -path '*/.*' ! -name 'script.lz' | while read -r file; do
+    echo "Compressing: $file"
+    lzip -9 -f -m "$file"
+done
+echo "🎉 All repository files processed into .lz!"
+EOF
+
+# 2. Compress the text file using maximum lzip compression settings
+lzip -9 -c temp_script.sh > script.lz
+
+# 3. Safely wipe out the temporary plain text file from your disk
+rm temp_script.sh
+
+echo "📦 Done! Your executable archive 'script.lz' has been successfully created."
