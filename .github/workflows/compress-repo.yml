@@ -1,6 +1,5 @@
-name: Auto Compress Repository to Lzip
+name: Production GitOps LZ Deploy
 
-# This triggers the script automatically on every code push to the main branch
 on:
   push:
     branches: [ "main" ]
@@ -8,45 +7,46 @@ on:
     branches: [ "main" ]
 
 jobs:
-  compress-and-upload:
+  validate-and-test:
     runs-on: ubuntu-latest
-
     steps:
-    # 1. Pull down the repository code into the runner machine
-    - name: Checkout Repository Code
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 2. Install the lzip dependency tool onto the Linux machine
-    - name: Install Lzip Compiler
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y lzip
-
-    # 3. Create the script.lz file on the fly and execute its contents
-    - name: Generate and Run script.lz
-      run: |
-        # Write the logic into a temporary script
-        cat << 'EOF' > temp_script.sh
-        #!/bin/bash
-        echo "⚡ Starting repository compression..."
-        find . -type f ! -path '*/.*' ! -name 'script.lz' | while read -r file; do
-            echo "Compressing: $file"
-            lzip -9 -f -m "$file"
-        done
-        echo "🎉 All repository files processed into .lz!"
-        EOF
-        
-        # Compress it into the script.lz format
-        lzip -9 -c temp_script.sh > script.lz
-        rm temp_script.sh
-        
-        # Execute the script.lz file directly from memory
-        lzip -cd script.lz | bash
-
-    # 4. Save your compressed files so you can download them from GitHub
-    - name: Upload Compressed Files as Artifacts
-      uses: actions/upload-artifact@v4
+    - name: Setup TFLint (Syntax Check)
+      uses: terraform-linters/setup-tflint@v4
       with:
-        name: compressed-repository-files
-        path: |
-          ./**/*.lz
+        tflint_version: v0.50.0
+
+    - name: Run TFLint Validation
+      run: tflint --init && tflint
+
+    - name: Setup OPA Engine
+      uses: open-policy-agent/setup-opa@v2
+
+    # Run the native unit tests we created in Step 1
+    - name: Execute Rego Policy Unit Tests
+      run: opa test policies/ -v
+
+  deploy-infrastructure:
+    needs: validate-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Apply
+      run: |
+        cd environments/universal-core-prod/
+        terraform init
+        terraform apply -auto-approve
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
